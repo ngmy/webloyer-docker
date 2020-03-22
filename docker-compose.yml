@@ -1,0 +1,100 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: always
+    ports:
+      - 80:80
+    environment:
+      APP_HOST: ${APP_HOST}
+      PHP_FPM_HOST: php-fpm
+    command: /bin/bash -c "mkdir -p /var/www && ln -fns /var/app/src/webloyer /var/www/webloyer && envsubst '$$APP_HOST $$PHP_FPM_HOST' < /etc/nginx/conf.d/webloyer.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    volumes:
+      - src:/var/app/src/webloyer # TODO stop symlink to vendor and use static-content
+#      - static-content:/var/www/webloyer/public
+      - ./containers/nginx/webloyer.template:/etc/nginx/conf.d/webloyer.template
+    depends_on:
+      - php-fpm
+
+  php-fpm:
+    container_name: php-fpm
+    restart: always
+    build: ./containers/php-fpm
+    environment:
+      APP_URL: ${APP_URL}
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - src:/var/app/src/webloyer
+#      - static-content:/var/www/webloyer/public
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it
+    depends_on:
+      - mysql
+
+  php-scheduler:
+    container_name: php-scheduler
+    restart: always
+    build: ./containers/php-scheduler
+    environment:
+      APP_URL: ${APP_URL}
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - src:/var/app/src/webloyer
+    depends_on:
+      - php-fpm
+
+  php-worker:
+    container_name: php-worker
+    restart: always
+    build: ./containers/php-worker
+    environment:
+      APP_URL: ${APP_URL}
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - src:/var/app/src/webloyer
+    depends_on:
+      - php-fpm
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./containers/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./containers/mysql/sql:/docker-entrypoint-initdb.d
+
+#  smtp:
+#    image: "catatnight/postfix"
+#    container_name: smtp
+#    restart: always
+#    ports:
+#      - 587:587
+#    environment:
+#      maildomain: ${SMTP_DOMAIN}
+#      smtp_user: ${SMTP_USER}:${SMTP_PASSWORD}
+#    volumes:
+#      - ./containers/smtp/certs:/etc/postfix/certs
+
+volumes:
+  src:
+#  static-content:
+  mysql-data:
