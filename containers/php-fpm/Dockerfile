@@ -1,7 +1,7 @@
 FROM php:7.2-fpm
 
 RUN apt-get update \
-  && apt-get install -y zlib1g-dev mariadb-client git \
+  && apt-get install -y zlib1g-dev mariadb-client git gosu \
   && docker-php-ext-install zip pdo_mysql bcmath
 
 COPY php.ini /usr/local/etc/php/
