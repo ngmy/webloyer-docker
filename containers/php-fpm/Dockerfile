@@ -12,9 +12,6 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 ENV COMPOSER_HOME /composer
 ENV PATH ${PATH}:/composer/vendor/bin
 
-# install prestissimo
-RUN composer global require hirak/prestissimo
-
 # install webloyer
 WORKDIR /var/app/src/webloyer
 RUN composer create-project ngmy/webloyer .
